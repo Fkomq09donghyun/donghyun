@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1인칭 4대4 게임</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #333;
+    }
+    /* 미니맵 스타일 */
+    #minimap {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 200px;
+      height: 200px;
+      border: 2px solid #fff;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+    /* 체력바 스타일 */
+    #health-bar {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      width: 200px;
+      height: 20px;
+      background-color: red;
+    }
+    /* 스킬바 스타일 */
+    #skill-bar {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      width: 200px;
+      height: 20px;
+      background-color: green;
+    }
+  </style>
+</head>
+<body>
+  <!-- 미니맵 -->
+  <div id="minimap"></div>
+  <!-- 체력바 -->
+  <div id="health-bar"></div>
+  <!-- 스킬바 -->
+  <div id="skill-bar"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // 게임 변수
+    let scene, camera, renderer;
+    let player, playerControls;
+    let skillCooldown = 0; // 스킬 쿨타임
+    let isShooting = false; // 공격 상태
+    let isMoving = { forward: false, backward: false, left: false, right: false }; // 이동 상태
+    let isSkillActive = false; // 스킬 사용 상태
+    let playerSpeed = 0.1; // 플레이어 이동 속도
+
+    // 씬, 카메라, 렌더러 설정
+    function init() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // 플레이어 모델 설정
+      const geometry = new THREE.BoxGeometry(1, 1, 1); // 기본 박스
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      player = new THREE.Mesh(geometry, material);
+      scene.add(player);
+
+      // 카메라 설정 (1인칭 시점)
+      camera.position.set(0, 1.5, 5);
+      camera.lookAt(player.position);
+
+      // 사용자 입력 처리
+      playerControls = new THREE.PointerLockControls(camera, document.body);
+      document.body.addEventListener('click', () => playerControls.lock()); // 마우스 클릭 시 PointerLock
+
+      // UI 초기화
+      document.getElementById('minimap').style.display = 'block';
+      document.getElementById('health-bar').style.width = '100%';
+      document.getElementById('skill-bar').style.width = '100%';
+
+      // 렌더링 시작
+      animate();
+    }
+
+    // 애니메이션 루프
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+
+      // 플레이어 모션 처리
+      handlePlayerControls();
+    }
+
+    // 플레이어의 움직임과 스킬 처리
+    function handlePlayerControls() {
+      if (isShooting) {
+        // 공격 모션 처리
+        cancelAttack();
+      }
+
+      // 스킬 사용
+      if (skillCooldown <= 0 && isSkillActive) {
+        // 스킬 사용
+        activateSkill();
+        skillCooldown = 5; // 예: 스킬 쿨타임 5초
+      } else {
+        skillCooldown -= 0.1; // 쿨타임 감소
+      }
+
+      // 이동 처리 (4방향)
+      if (isMoving.forward) {
+        player.position.z -= playerSpeed; // 앞으로 이동
+      }
+      if (isMoving.backward) {
+        player.position.z += playerSpeed; // 뒤로 이동
+      }
+      if (isMoving.left) {
+        player.position.x -= playerSpeed; // 왼쪽으로 이동
+      }
+      if (isMoving.right) {
+        player.position.x += playerSpeed; // 오른쪽으로 이동
+      }
+
+      // 카메라는 항상 플레이어를 바라보도록 해야 합니다.
+      camera.position.set(player.position.x, player.position.y + 1.5, player.position.z + 5);
+      camera.lookAt(player.position);
+    }
+
+    // 공격을 취소하는 함수 (모션 캔슬)
+    function cancelAttack() {
+      if (isShooting) {
+        isShooting = false;
+        console.log("공격 취소");
+      }
+    }
+
+    // 스킬 활성화
+    function activateSkill() {
+      console.log("스킬 활성화!");
+      // 스킬의 동작은 이곳에서 처리됩니다.
+    }
+
+    // 키보드 입력 이벤트 처리
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'w') {
+        isMoving.forward = true; // 앞으로 이동
+      }
+      if (event.key === 's') {
+        isMoving.backward = true; // 뒤로 이동
+      }
+      if (event.key === 'a') {
+        isMoving.left = true; // 왼쪽으로 이동
+      }
+      if (event.key === 'd') {
+        isMoving.right = true; // 오른쪽으로 이동
+      }
+      if (event.key === ' ') {
+        isShooting = true; // 공격 시작
+      }
+      if (event.key === 'e') {
+        isSkillActive = true; // 스킬 사용 시작
+      }
+    });
+
+    document.addEventListener('keyup', (event) => {
+      if (event.key === 'w') {
+        isMoving.forward = false; // 앞으로 이동 중지
+      }
+      if (event.key === 's') {
+        isMoving.backward = false; // 뒤로 이동 중지
+      }
+      if (event.key === 'a') {
+        isMoving.left = false; // 왼쪽 이동 중지
+      }
+      if (event.key === 'd') {
+        isMoving.right = false; // 오른쪽 이동 중지
+      }
+      if (event.key === ' ') {
+        isShooting = false; // 공격 중지
+      }
+      if (event.key === 'e') {
+        isSkillActive = false; // 스킬 사용 중지
+      }
+    });
+
+    // 초기화 함수 호출
+    init();
+  </script>
+</body>
+</html>
